@@ -5,7 +5,6 @@
 #define DISSECTOR_FULL_NAME "PROJEKT Inzynierka"
 #define DISSECTOR_NAME inz
 
-#define BIT_SHIFT_VAR(name, x, sh) enum { name = x ## ull << sh }
 
 // #define JOIN(x, y) JOIN_AGAIN(x, y)
 // #define JOIN_AGAIN(x, y) x ## y
@@ -26,10 +25,10 @@ static int hf_additional_data_i2c_status = -1;
 static int hf_additional_data_adc_clk_sel = -1;
 static int hf_additional_data_asic_enable_status = -1;
 
-BIT_SHIFT_VAR(  ADDITIONAL_DATA_CLK_STATE_MASK            ,0x1F ,56);
-BIT_SHIFT_VAR(  ADDITIONAL_DATA_I2C_STATUS_MASK           ,0xF  ,48);
-BIT_SHIFT_VAR(  ADDITIONAL_DATA_ADC_CLK_SEL_MASK          ,0x3  ,44);
-BIT_SHIFT_VAR(  ADDITIONAL_DATA_ASIC_ENABLE_STATUS_MASK   ,0xF  ,40);
+#define ADDITIONAL_DATA_CLK_STATE_MASK               0x1F00000000000000ull
+#define ADDITIONAL_DATA_I2C_STATUS_MASK              0x000F000000000000ull
+#define ADDITIONAL_DATA_ADC_CLK_SEL_MASK             0x0000300000000000ull
+#define ADDITIONAL_DATA_ASIC_ENABLE_STATUS_MASK      0x00000F0000000000ull
 
 static int * const additional_info_fileds[] = {
 	&hf_additional_data_clk_state,
@@ -68,16 +67,16 @@ static int hf_data_channel_id = -1;
 static int hf_data_plane_x_y = -1;
 static int hf_data_parity_2 = -1;
 
-BIT_SHIFT_VAR(  DATA_TIMESTAMP_ASIC_MASK       ,0x3FFF    ,0 );
-BIT_SHIFT_VAR(  DATA_ADC_MASK                  ,0x3FFC    ,14);
-BIT_SHIFT_VAR(  DATA_ASIC_ID_MASK              ,0x1C      ,26);
-BIT_SHIFT_VAR(  DATA_OVERFLOW_MASK             ,0x2       ,29);
-BIT_SHIFT_VAR(  DATA_PILUP_MASK                ,0x4       ,30);
-BIT_SHIFT_VAR(  DATA_PARITY_1_MASK             ,0x8       ,31);
-BIT_SHIFT_VAR(  DATA_TIMESTAMP_COEARSE_MASK    ,0x7FFFFF  ,32);
-BIT_SHIFT_VAR(  DATA_CHANNEL_ID_MASK           ,0x3F8     ,55);
-BIT_SHIFT_VAR(  DATA_PLANE_X_Y_MASK            ,0x4       ,62);
-BIT_SHIFT_VAR(  DATA_PARITY_2_MASK             ,0x8       ,63);
+#define DATA_TIMESTAMP_ASIC_MASK        0x0000000000003FFFull
+#define DATA_ADC_MASK                   0x0000000003FFC000ull
+#define DATA_ASIC_ID_MASK               0x000000001C000000ull
+#define DATA_OVERFLOW_MASK              0x0000000020000000ull
+#define DATA_PILUP_MASK                 0x0000000040000000ull
+#define DATA_PARITY_1_MASK              0x0000000080000000ull
+#define DATA_TIMESTAMP_COEARSE_MASK     0x007FFFFF00000000ull
+#define DATA_CHANNEL_ID_MASK            0x3F80000000000000ull
+#define DATA_PLANE_X_Y_MASK             0x4000000000000000ull
+#define DATA_PARITY_2_MASK              0x8000000000000000ull
 
 static int * const data_fields[] = {
 	&hf_data_timestamp_asic,
