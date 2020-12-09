@@ -18,6 +18,29 @@ static int hf_packet_additional_data = -1;
 static int hf_packet_data_section = -1;
 static int hf_packet_data_count = -1;
 
+/* ADDITIONAL DATA */
+
+static int hf_additional_data_clk_state = -1;
+static int hf_additional_data_i2c_status = -1;
+static int hf_additional_data_adc_clk_sel = -1;
+static int hf_additional_data_asic_enable_status = -1;
+
+#define ADDITIONAL_DATA_CLK_STATE_MASK               0x1F00000000000000ull
+#define ADDITIONAL_DATA_I2C_STATUS_MASK              0x000F000000000000ull
+#define ADDITIONAL_DATA_ADC_CLK_SEL_MASK             0x0000300000000000ull
+#define ADDITIONAL_DATA_ASIC_ENABLE_STATUS_MASK      0x00000F0000000000ull
+
+static int * const additional_info_fileds[] = {
+	&hf_additional_data_clk_state,
+	&hf_additional_data_i2c_status,
+	&hf_additional_data_adc_clk_sel,
+	&hf_additional_data_asic_enable_status,
+	NULL
+};
+
+
+/* PACKET DATA */
+
 /* Bits format GEMROC
     00-13 TimeStamp ASIC
     14-25 ADC
@@ -55,7 +78,7 @@ static int hf_data_parity_2 = -1;
 #define DATA_PLANE_X_Y_MASK             0x4000000000000000ull
 #define DATA_PARITY_2_MASK              0x8000000000000000ull
 
-static int * const data_fields[] _U_ = {
+static int * const data_fields[] = {
 	&hf_data_timestamp_asic,
 	&hf_data_adc,
 	&hf_data_asic_id,
@@ -71,6 +94,7 @@ static int * const data_fields[] _U_ = {
 
 static gint ett_inz = -1;
 static gint ett_inz_data = -1;
+static gint ett_inz_additional_data = -1;
 
 int printf(const char *str, ...);
 int sprintf(char *, const char *, ...);
@@ -116,7 +140,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	offset += 8;
 
 	// additional data
-	proto_tree_add_item(top_tree, hf_packet_additional_data, tvb, offset, 8, ENC_LITTLE_ENDIAN);
+	proto_tree_add_bitmask(top_tree, tvb, offset, hf_packet_additional_data, ett_inz_additional_data, additional_info_fileds, ENC_LITTLE_ENDIAN);
 	offset += 8;
 
 	data_tree_item = proto_tree_add_string_format(top_tree, hf_packet_data_section, tvb, offset, 8*180, ENC_NA, "Packet list");
@@ -159,6 +183,28 @@ void proto_register_inz (void)
 			{ "Packet_count", "inz.pack_cnt",
 			  FT_UINT64, BASE_DEC, NULL, 0xFFF8 /* 0xFFFF >> 3 */ ,
 			  "Number of data nodes sent in this packet", HFILL }
+		},
+
+		/* ADDITIONAL DATA INFO */
+		{ &hf_additional_data_clk_state,
+			{ "Clk state", "inz.add_data.clk_st",
+			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_CLK_STATE_MASK,
+			  "Clk State info", HFILL }
+		},
+		{ &hf_additional_data_i2c_status,
+			{ "I2C status", "inz.add_data.i2c_status",
+			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_I2C_STATUS_MASK,
+			  "I2C status info", HFILL }
+		},
+		{ &hf_additional_data_adc_clk_sel,
+			{ "ADC clk sel", "inz.add_data.adc_clk_sel",
+			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_ADC_CLK_SEL_MASK,
+			  "ADC clk sel info", HFILL }
+		},
+		{ &hf_additional_data_asic_enable_status,
+			{ "ASIC enable status", "inz.add_data.asic_enable_status",
+			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_ASIC_ENABLE_STATUS_MASK,
+			  "ASIC enable status info", HFILL }
 		},
 
 		/* DATA INFO */
@@ -222,7 +268,8 @@ void proto_register_inz (void)
 
 	static gint *ett[] = {
 		&ett_inz,
-		&ett_inz_data
+		&ett_inz_data,
+		&ett_inz_additional_data,
 	};
 
 	proto_inz = proto_register_protocol (
