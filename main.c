@@ -15,7 +15,7 @@ static int proto_inz = -1;
 
 static int hf_packet_no = -1;
 static int hf_packet_additional_data = -1;
-static int hf_packet_data = -1;
+static int hf_packet_data_section = -1;
 static int hf_packet_data_count = -1;
 
 /* Bits format GEMROC
@@ -30,6 +30,8 @@ static int hf_packet_data_count = -1;
     62    Plane X/Y
     63    Parity
 */
+
+static int hf_packet_data = -1;
 
 static int hf_data_timestamp_asic = -1;
 static int hf_data_adc = -1;
@@ -71,17 +73,18 @@ static gint ett_inz = -1;
 static gint ett_inz_data = -1;
 
 int printf(const char *str, ...);
+int sprintf(char *, const char *, ...);
 
-#define debug_print_int(x) printf( #x ": %d\n", (int)x)
-#define debug_print_str(x) printf( #x ": %s\n", x)
+#define debug_print_int(x) printf("Info - " #x ": %d\n", (int)x)
+#define debug_print_str(x) printf("Info - " #x ": %s\n", x)
 
 static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_)
 {
 	proto_item *top_tree_item;
 	proto_tree *top_tree;
 	
-	proto_item *data_tree_item _U_;
-	proto_tree *packet_tree _U_;
+	proto_item *data_tree_item;
+	proto_tree *packet_tree;
 
 	guint offset = 0;
 	guint64 packet_no;
@@ -116,12 +119,17 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	proto_tree_add_item(top_tree, hf_packet_additional_data, tvb, offset, 8, ENC_LITTLE_ENDIAN);
 	offset += 8;
 
+	data_tree_item = proto_tree_add_string_format(top_tree, hf_packet_data_section, tvb, offset, 8*180, ENC_NA, "Packet list");
+	packet_tree = proto_item_add_subtree(data_tree_item, ett_inz_data);
 	/* consume data */
 	for (size_t iter = 0; iter < data_cnt; ++iter) {
-		proto_tree_add_bitmask(top_tree, tvb, offset, hf_packet_data, ett_inz_data, data_fields, ENC_LITTLE_ENDIAN);
-		offset += 8;
+		char tab[0x20];
+		guint inner_offset = offset + (guint)iter * 8;
+		sprintf(tab, "Packet data[%d]", (int)iter);
+		// proto_tree_add_bitmask(data_tree_item, tvb, inner_offset, hf_packet_data, ett_inz_data, data_fields, ENC_LITTLE_ENDIAN);
+		proto_tree_add_bitmask_text(data_tree_item, tvb, inner_offset, 8, tab, NULL, ett_inz_data, data_fields, ENC_LITTLE_ENDIAN, BMT_NO_APPEND);
 	}
-	offset = 182*8;
+	offset += 180*8;
 	proto_tree_add_item(top_tree, hf_packet_data_count, tvb, offset, 8, ENC_LITTLE_ENDIAN);
 	offset += 8;
 
@@ -142,10 +150,10 @@ void proto_register_inz (void)
 			  FT_UINT64, BASE_HEX, NULL, 0x0,
 			  "Additional data containing info about asic settings", HFILL }
 		},
-		{ &hf_packet_data,
-			{ "Packet_data", "inz.pack_data",
-			  FT_UINT64, BASE_HEX, NULL, 0x0,
-			  "Data of packets, now unavailable", HFILL }
+		{ &hf_packet_data_section,
+			{ "Data section", "inz.data_sec",
+			  FT_STRINGZ, BASE_NONE, NULL, 0x0,
+			  "Data section of packet", HFILL }
 		},
 		{ &hf_packet_data_count,
 			{ "Packet_count", "inz.pack_cnt",
@@ -154,6 +162,12 @@ void proto_register_inz (void)
 		},
 
 		/* DATA INFO */
+		{ &hf_packet_data,
+			{ "Packet_data", "inz.pack_data",
+			  FT_UINT64, BASE_HEX, NULL, 0x0,
+			  "Data of packets, now unavailable", HFILL }
+		},
+
 		{ &hf_data_timestamp_asic,
 			{ "TimeStamp ASIC", "inz.data.ts_asic",
 			  FT_UINT64, BASE_HEX, NULL, DATA_TIMESTAMP_ASIC_MASK,
