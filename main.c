@@ -25,7 +25,6 @@ static int hf_packet_data_count = -1;
     29    OverFlow
     30    PilUp
     31    Parity
-
     32-54 TimeStamp coearse (FPGA)
     55-61 Channel id
     62    Plane X/Y
@@ -145,6 +144,56 @@ void proto_register_inz (void)
 		},
 
 		/* DATA INFO */
+		{ &hf_data_timestamp_asic,
+			{ "TimeStamp ASIC", "inz.data.ts_asic",
+			  FT_UINT64, BASE_HEX, NULL, DATA_TIMESTAMP_ASIC_MASK,
+			  "TimeStamp ASIC info", HFILL }
+		},
+		{ &hf_data_adc,
+			{ "ADC", "inz.data.adc",
+			  FT_UINT64, BASE_HEX, NULL, DATA_ADC_MASK,
+			  "ADC info", HFILL }
+		},
+		{ &hf_data_asic_id,
+			{ "ASIC id", "inz.data.asic_id",
+			  FT_UINT64, BASE_HEX, NULL, DATA_ASIC_ID_MASK,
+			  "ASIC id info", HFILL }
+		},
+		{ &hf_data_overflow,
+			{ "OverFlow", "inz.data.overflow",
+			  FT_UINT64, BASE_HEX, NULL, DATA_OVERFLOW_MASK,
+			  "OverFlow info", HFILL }
+		},
+		{ &hf_data_pilup,
+			{ "PilUp", "inz.data.pilup",
+			  FT_UINT64, BASE_HEX, NULL, DATA_PILUP_MASK,
+			  "PilUp info", HFILL }
+		},
+		{ &hf_data_parity_1,
+			{ "Parity", "inz.data.parity_1",
+			  FT_UINT64, BASE_HEX, NULL, DATA_PARITY_1_MASK,
+			  "Parity info", HFILL }
+		},
+		{ &hf_data_timestamp_coearse,
+			{ "TimeStamp coearse (FPGA)", "inz.data.ts_coearse",
+			  FT_UINT64, BASE_HEX, NULL, DATA_TIMESTAMP_COEARSE_MASK,
+			  "TimeStamp coearse (FPGA) info", HFILL }
+		},
+		{ &hf_data_channel_id,
+			{ "Channel id", "inz.data.channel_id",
+			  FT_UINT64, BASE_HEX, NULL, DATA_CHANNEL_ID_MASK,
+			  "Channel id info", HFILL }
+		},
+		{ &hf_data_plane_x_y,
+			{ "Plane X/Y", "inz.data.plane_x_y",
+			  FT_UINT64, BASE_HEX, NULL, DATA_PLANE_X_Y_MASK,
+			  "Plane X/Y info", HFILL }
+		},
+		{ &hf_data_parity_2,
+			{ "Parity 2", "inz.data.parity_2",
+			  FT_UINT64, BASE_HEX, NULL, DATA_PARITY_2_MASK,
+			  "Parity 2 info", HFILL }
+		}
 	};
 
 	static gint *ett[] = {
