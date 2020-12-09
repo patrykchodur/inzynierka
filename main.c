@@ -139,7 +139,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	// Preparing column info (upper window)
 	col_set_str(pinfo->cinfo, COL_PROTOCOL, "Inż");
 	col_clear(pinfo->cinfo, COL_INFO);
-	col_add_str(pinfo->cinfo, COL_INFO, "COL_INFO tescik");
+	col_add_str(pinfo->cinfo, COL_INFO, "GEMROC Data");
 
 	top_tree_item = proto_tree_add_item(tree, proto_inz, tvb, 0, -1, ENC_NA);
 	top_tree = proto_item_add_subtree(top_tree_item, ett_inz);
@@ -174,14 +174,14 @@ void proto_register_inz (void)
 	static hf_register_info hf[] = {
 		/* PACKET INFO */
 		{ &hf_packet_no, 
-			{ "Packet_no", "inz.pack_no", 
+			{ "Packet no", "inz.pack_no", 
 			  FT_UINT64, BASE_DEC, NULL, 0x0,
 			  "Number of this packet", HFILL }
 		},
 		{ &hf_packet_additional_data,
-			{ "Additional_data", "inz.add_data",
+			{ "Status data", "inz.add_data",
 			  FT_UINT64, BASE_HEX, NULL, 0x0,
-			  "Additional data containing info about asic settings", HFILL }
+			  "Status data containing info about asic settings", HFILL }
 		},
 		{ &hf_packet_data_section,
 			{ "Data section", "inz.data_sec",
@@ -189,7 +189,7 @@ void proto_register_inz (void)
 			  "Data section of packet", HFILL }
 		},
 		{ &hf_packet_data_count,
-			{ "Packet_count", "inz.pack_cnt",
+			{ "Packet count", "inz.pack_cnt",
 			  FT_UINT16, BASE_DEC, NULL, 0xFFF8 /* 0xFFFF >> 3 */ ,
 			  "Number of data nodes sent in this packet", HFILL }
 		},
@@ -218,7 +218,7 @@ void proto_register_inz (void)
 
 		/* DATA INFO */
 		{ &hf_packet_data,
-			{ "Packet_data", "inz.pack_data",
+			{ "Packet data", "inz.pack_data",
 			  FT_UINT64, BASE_HEX, NULL, 0x0,
 			  "Data of packets, now unavailable", HFILL }
 		},
