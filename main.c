@@ -5,6 +5,11 @@
 #define DISSECTOR_FULL_NAME "PROJEKT Inzynierka"
 #define DISSECTOR_NAME inz
 
+#define PACKET_WIDTH 182
+
+// #define DEBUG
+
+#include <stdio.h>
 
 // #define JOIN(x, y) JOIN_AGAIN(x, y)
 // #define JOIN_AGAIN(x, y) x ## y
@@ -96,11 +101,15 @@ static gint ett_inz = -1;
 static gint ett_inz_data = -1;
 static gint ett_inz_additional_data = -1;
 
-int printf(const char *str, ...);
-int sprintf(char *, const char *, ...);
-
-#define debug_print_int(x) printf("Info - " #x ": %d\n", (int)x)
-#define debug_print_str(x) printf("Info - " #x ": %s\n", x)
+#ifdef DEBUG
+	#define debug_print_int(x) fprintf(stderr, "Info - " #x ": %d\n", (int)x)
+	#define debug_print_str(x) fprintf(stderr, "Info - " #x ": %s\n", x)
+	#define debug_print_f(...) fprintf(stderr, "Info - " __VA_ARGS__)
+#else
+	#define debug_print_int(x) (void)0
+	#define debug_print_str(x) (void)0
+	#define debug_print_f(...) (void)0
+#endif // DEBUG
 
 static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_)
 {
@@ -115,14 +124,14 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	guint64 data_cnt;
 
 	// basic error handling
-	if (tvb_captured_length(tvb) != 183 * 8) {
-		printf("Error: tvb_captured_length(tvb) not equal to 183*8 (actually %d)\n", tvb_captured_length(tvb));
+	if (tvb_captured_length(tvb) != PACKET_WIDTH * 8 + 2) {
+		debug_print_f("tvb_captured_length(tvb) not equal to %d*8+2=%d (actually %d)\n", PACKET_WIDTH, PACKET_WIDTH * 8 + 2, tvb_captured_length(tvb));
 		return 0;
 	}
 
 	// getting some needed info
 	packet_no = tvb_get_guint64(tvb, offset, ENC_LITTLE_ENDIAN);
-	data_cnt = (tvb_get_guint64(tvb, 182*8, ENC_LITTLE_ENDIAN) & 0xFFFF) >> 3;
+	data_cnt = (tvb_get_guint16(tvb, PACKET_WIDTH*8, ENC_LITTLE_ENDIAN) & 0xFFFF) >> 3;
 	debug_print_int(packet_no);
 	debug_print_int(data_cnt);
 
@@ -154,8 +163,8 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 		proto_tree_add_bitmask_text(data_tree_item, tvb, inner_offset, 8, tab, NULL, ett_inz_data, data_fields, ENC_LITTLE_ENDIAN, BMT_NO_APPEND);
 	}
 	offset += 180*8;
-	proto_tree_add_item(top_tree, hf_packet_data_count, tvb, offset, 8, ENC_LITTLE_ENDIAN);
-	offset += 8;
+	proto_tree_add_item(top_tree, hf_packet_data_count, tvb, offset, 2, ENC_LITTLE_ENDIAN);
+	offset += 2;
 
 	return tvb_captured_length(tvb);
 }
@@ -181,7 +190,7 @@ void proto_register_inz (void)
 		},
 		{ &hf_packet_data_count,
 			{ "Packet_count", "inz.pack_cnt",
-			  FT_UINT64, BASE_DEC, NULL, 0xFFF8 /* 0xFFFF >> 3 */ ,
+			  FT_UINT16, BASE_DEC, NULL, 0xFFF8 /* 0xFFFF >> 3 */ ,
 			  "Number of data nodes sent in this packet", HFILL }
 		},
 
