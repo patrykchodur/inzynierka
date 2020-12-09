@@ -42,7 +42,7 @@ static int hf_data_channel_id = -1;
 static int hf_data_plane_x_y = -1;
 static int hf_data_parity_2 = -1;
 
-#define DATA_TIMESTAMP_ASIC_MASK        0x00000000000003FFull
+#define DATA_TIMESTAMP_ASIC_MASK        0x0000000000003FFFull
 #define DATA_ADC_MASK                   0x0000000003FFC000ull
 #define DATA_ASIC_ID_MASK               0x000000001C000000ull
 #define DATA_OVERFLOW_MASK              0x0000000020000000ull
@@ -68,7 +68,7 @@ static int * const data_fields[] _U_ = {
 };
 
 static gint ett_inz = -1;
-
+static gint ett_inz_data = -1;
 
 int printf(const char *str, ...);
 
@@ -77,43 +77,53 @@ int printf(const char *str, ...);
 
 static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_)
 {
-	proto_item *tree_item;
-	proto_tree *inz_tree;
+	proto_item *top_tree_item;
+	proto_tree *top_tree;
+	
+	proto_item *data_tree_item _U_;
+	proto_tree *packet_tree _U_;
 
 	guint offset = 0;
 	guint64 packet_no;
 	guint64 data_cnt;
 
+	// basic error handling
 	if (tvb_captured_length(tvb) != 183 * 8) {
 		printf("Error: tvb_captured_length(tvb) not equal to 183*8 (actually %d)\n", tvb_captured_length(tvb));
 		return 0;
 	}
 
+	// getting some needed info
 	packet_no = tvb_get_guint64(tvb, offset, ENC_LITTLE_ENDIAN);
 	data_cnt = (tvb_get_guint64(tvb, 182*8, ENC_LITTLE_ENDIAN) & 0xFFFF) >> 3;
 	debug_print_int(packet_no);
 	debug_print_int(data_cnt);
 
 
+	// Preparing column info (upper window)
 	col_set_str(pinfo->cinfo, COL_PROTOCOL, "Inż");
 	col_clear(pinfo->cinfo, COL_INFO);
 	col_add_str(pinfo->cinfo, COL_INFO, "COL_INFO tescik");
 
-	tree_item = proto_tree_add_item(tree, proto_inz, tvb, 0, -1, ENC_NA);
-	inz_tree = proto_item_add_subtree(tree_item, ett_inz);
+	top_tree_item = proto_tree_add_item(tree, proto_inz, tvb, 0, -1, ENC_NA);
+	top_tree = proto_item_add_subtree(top_tree_item, ett_inz);
 
-	proto_tree_add_item(inz_tree, hf_packet_no, tvb, offset, 8, ENC_LITTLE_ENDIAN);
+	// packet no
+	proto_tree_add_item(top_tree, hf_packet_no, tvb, offset, 8, ENC_LITTLE_ENDIAN);
 	offset += 8;
 
-	proto_tree_add_item(inz_tree, hf_packet_additional_data, tvb, offset, 8, ENC_LITTLE_ENDIAN);
+	// additional data
+	proto_tree_add_item(top_tree, hf_packet_additional_data, tvb, offset, 8, ENC_LITTLE_ENDIAN);
 	offset += 8;
 
 	/* consume data */
-	proto_tree_add_item(inz_tree, hf_packet_data, tvb, offset, 180 * 8, ENC_NA);
-	offset += 180 * 8;
-
-	proto_tree_add_item(inz_tree, hf_packet_data_count, tvb, offset, 8, ENC_LITTLE_ENDIAN);
-	offset += 180 * 8;
+	for (size_t iter = 0; iter < data_cnt; ++iter) {
+		proto_tree_add_bitmask(top_tree, tvb, offset, hf_packet_data, ett_inz_data, data_fields, ENC_LITTLE_ENDIAN);
+		offset += 8;
+	}
+	offset = 182*8;
+	proto_tree_add_item(top_tree, hf_packet_data_count, tvb, offset, 8, ENC_LITTLE_ENDIAN);
+	offset += 8;
 
 	return tvb_captured_length(tvb);
 }
@@ -134,7 +144,7 @@ void proto_register_inz (void)
 		},
 		{ &hf_packet_data,
 			{ "Packet_data", "inz.pack_data",
-			  FT_NONE, BASE_NONE, NULL, 0x0,
+			  FT_UINT64, BASE_HEX, NULL, 0x0,
 			  "Data of packets, now unavailable", HFILL }
 		},
 		{ &hf_packet_data_count,
@@ -197,7 +207,8 @@ void proto_register_inz (void)
 	};
 
 	static gint *ett[] = {
-		&ett_inz
+		&ett_inz,
+		&ett_inz_data
 	};
 
 	proto_inz = proto_register_protocol (
