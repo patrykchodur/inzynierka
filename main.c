@@ -1,7 +1,7 @@
 #include "config.h"
 #include <epan/packet.h>
 
-#define PORT_NO 1234
+#define PORT_NO 48350
 #define DISSECTOR_FULL_NAME "PROJEKT Inzynierka"
 #define DISSECTOR_NAME inz
 
