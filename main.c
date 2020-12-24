@@ -72,6 +72,26 @@ static int hf_data_channel_id = -1;
 static int hf_data_plane_x_y = -1;
 static int hf_data_parity_2 = -1;
 
+#define USE_OLD
+#define REVERSE_BIT_ORDER
+
+#ifdef USE_OLD
+
+#ifdef REVERSE_BIT_ORDER
+
+#define DATA_TIMESTAMP_ASIC_MASK        0xFFFC000000000000ull
+#define DATA_ADC_MASK                   0x0003FFC000000000ull
+#define DATA_ASIC_ID_MASK               0x0000003800000000ull
+#define DATA_OVERFLOW_MASK              0x0000000400000000ull
+#define DATA_PILUP_MASK                 0x0000000200000000ull
+#define DATA_PARITY_1_MASK              0x0000000100000000ull
+#define DATA_TIMESTAMP_COEARSE_MASK     0x00000000FFFFFE00ull
+#define DATA_CHANNEL_ID_MASK            0x00000000000001FCull
+#define DATA_PLANE_X_Y_MASK             0x0000000000000002ull
+#define DATA_PARITY_2_MASK              0x0000000000000001ull
+
+#else
+
 #define DATA_TIMESTAMP_ASIC_MASK        0x0000000000003FFFull
 #define DATA_ADC_MASK                   0x0000000003FFC000ull
 #define DATA_ASIC_ID_MASK               0x000000001C000000ull
@@ -82,6 +102,19 @@ static int hf_data_parity_2 = -1;
 #define DATA_CHANNEL_ID_MASK            0x3F80000000000000ull
 #define DATA_PLANE_X_Y_MASK             0x4000000000000000ull
 #define DATA_PARITY_2_MASK              0x8000000000000000ull
+
+#endif // REVERSE_BIT_ORDER
+#else // USE_OLD
+
+#define DATA_OVERFLOW_MASK              0x0000000000000001ull
+#define DATA_PILE_UP_MASK               0x0000000000000002ull
+#define DATA_ASIC_ID_MASK               0x000000000000000Cull
+#define DATA_CHANNEL_ID_MASK            0x00000000000001F0ull
+#define DATA_TIMESTAMP_ASIC_MASK        0x00000000001FFE00ull
+#define DATA_TIMESTAMP_FPGA_MASK        0x000FFFFFFFE00000ull
+#define DATA_ADC_MASK                   0xFFF0000000000000ull
+
+#endif // USE_OLD
 
 static int * const data_fields[] = {
 	&hf_data_timestamp_asic,
@@ -219,58 +252,58 @@ void proto_register_inz (void)
 		/* DATA INFO */
 		{ &hf_packet_data,
 			{ "Packet data", "inz.pack_data",
-			  FT_UINT64, BASE_HEX, NULL, 0x0,
+			  FT_UINT64, BASE_DEC, NULL, 0x0,
 			  "Data of packets, now unavailable", HFILL }
 		},
 
 		{ &hf_data_timestamp_asic,
 			{ "TimeStamp ASIC", "inz.data.ts_asic",
-			  FT_UINT64, BASE_HEX, NULL, DATA_TIMESTAMP_ASIC_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_ASIC_MASK,
 			  "TimeStamp ASIC info", HFILL }
 		},
 		{ &hf_data_adc,
 			{ "ADC", "inz.data.adc",
-			  FT_UINT64, BASE_HEX, NULL, DATA_ADC_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_ADC_MASK,
 			  "ADC info", HFILL }
 		},
 		{ &hf_data_asic_id,
 			{ "ASIC id", "inz.data.asic_id",
-			  FT_UINT64, BASE_HEX, NULL, DATA_ASIC_ID_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_ASIC_ID_MASK,
 			  "ASIC id info", HFILL }
 		},
 		{ &hf_data_overflow,
 			{ "OverFlow", "inz.data.overflow",
-			  FT_UINT64, BASE_HEX, NULL, DATA_OVERFLOW_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_OVERFLOW_MASK,
 			  "OverFlow info", HFILL }
 		},
 		{ &hf_data_pilup,
 			{ "PilUp", "inz.data.pilup",
-			  FT_UINT64, BASE_HEX, NULL, DATA_PILUP_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_PILUP_MASK,
 			  "PilUp info", HFILL }
 		},
 		{ &hf_data_parity_1,
 			{ "Parity", "inz.data.parity_1",
-			  FT_UINT64, BASE_HEX, NULL, DATA_PARITY_1_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_PARITY_1_MASK,
 			  "Parity info", HFILL }
 		},
 		{ &hf_data_timestamp_coearse,
 			{ "TimeStamp coearse (FPGA)", "inz.data.ts_coearse",
-			  FT_UINT64, BASE_HEX, NULL, DATA_TIMESTAMP_COEARSE_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_COEARSE_MASK,
 			  "TimeStamp coearse (FPGA) info", HFILL }
 		},
 		{ &hf_data_channel_id,
 			{ "Channel id", "inz.data.channel_id",
-			  FT_UINT64, BASE_HEX, NULL, DATA_CHANNEL_ID_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_CHANNEL_ID_MASK,
 			  "Channel id info", HFILL }
 		},
 		{ &hf_data_plane_x_y,
 			{ "Plane X/Y", "inz.data.plane_x_y",
-			  FT_UINT64, BASE_HEX, NULL, DATA_PLANE_X_Y_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_PLANE_X_Y_MASK,
 			  "Plane X/Y info", HFILL }
 		},
 		{ &hf_data_parity_2,
 			{ "Parity 2", "inz.data.parity_2",
-			  FT_UINT64, BASE_HEX, NULL, DATA_PARITY_2_MASK,
+			  FT_UINT64, BASE_DEC, NULL, DATA_PARITY_2_MASK,
 			  "Parity 2 info", HFILL }
 		}
 	};
