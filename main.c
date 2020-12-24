@@ -59,8 +59,12 @@ static int * const additional_info_fileds[] = {
     63    Parity
 */
 
+// #define USE_OLD
+#define REVERSE_BIT_ORDER
+
 static int hf_packet_data = -1;
 
+#ifdef USE_OLD
 static int hf_data_timestamp_asic = -1;
 static int hf_data_adc = -1;
 static int hf_data_asic_id = -1;
@@ -71,9 +75,15 @@ static int hf_data_timestamp_coearse = -1;
 static int hf_data_channel_id = -1;
 static int hf_data_plane_x_y = -1;
 static int hf_data_parity_2 = -1;
-
-#define USE_OLD
-#define REVERSE_BIT_ORDER
+#else
+static int hf_data_overflow = -1;
+static int hf_data_pile_up = -1;
+static int hf_data_asic_id = -1;
+static int hf_data_channel_id = -1;
+static int hf_data_timestamp_asic = -1;
+static int hf_data_timestamp_fpga = -1;
+static int hf_data_adc = -1;
+#endif
 
 #ifdef USE_OLD
 
@@ -117,6 +127,7 @@ static int hf_data_parity_2 = -1;
 #endif // USE_OLD
 
 static int * const data_fields[] = {
+#ifdef USE_OLD
 	&hf_data_timestamp_asic,
 	&hf_data_adc,
 	&hf_data_asic_id,
@@ -127,8 +138,25 @@ static int * const data_fields[] = {
 	&hf_data_channel_id,
 	&hf_data_plane_x_y,
 	&hf_data_parity_2,
+#else
+	&hf_data_overflow,
+	&hf_data_pile_up,
+	&hf_data_asic_id,
+	&hf_data_channel_id,
+	&hf_data_timestamp_asic,
+	&hf_data_timestamp_fpga,
+	&hf_data_adc,
+#endif
 	NULL
 };
+
+// CUSTOM DISPLAY FUNCTIONS (for bitfields)
+void display_timestamp_asic(gchar *str, guint64 val) {
+	snprintf(str, ITEM_LABEL_LENGTH, "%llu", val << 2);
+}
+void display_asic_id(gchar *str, guint64 val) {
+	snprintf(str, ITEM_LABEL_LENGTH, "%llu", val + 86);
+}
 
 static gint ett_inz = -1;
 static gint ett_inz_data = -1;
@@ -256,6 +284,7 @@ void proto_register_inz (void)
 			  "Data of packets, now unavailable", HFILL }
 		},
 
+#ifdef USE_OLD
 		{ &hf_data_timestamp_asic,
 			{ "TimeStamp ASIC", "inz.data.ts_asic",
 			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_ASIC_MASK,
@@ -305,7 +334,44 @@ void proto_register_inz (void)
 			{ "Parity 2", "inz.data.parity_2",
 			  FT_UINT64, BASE_DEC, NULL, DATA_PARITY_2_MASK,
 			  "Parity 2 info", HFILL }
-		}
+		},
+#else // USE_OLD
+		{ &hf_data_overflow,
+			{ "OverFlow", "inz.data.overflow",
+			  FT_UINT64, BASE_DEC, NULL, DATA_OVERFLOW_MASK,
+			  "OverFlow info", HFILL }
+		},
+		{ &hf_data_pile_up,
+			{ "PileUp", "inz.data.pile_up",
+			  FT_UINT64, BASE_DEC, NULL, DATA_PILE_UP_MASK,
+			  "PileUp info", HFILL }
+		},
+		{ &hf_data_asic_id,
+			{ "ASIC id", "inz.data.asic_id",
+			  FT_UINT64, BASE_CUSTOM, display_asic_id, DATA_ASIC_ID_MASK,
+			  "ASIC id info", HFILL }
+		},
+		{ &hf_data_channel_id,
+			{ "Channel id", "inz.data.channel_id",
+			  FT_UINT64, BASE_DEC, NULL, DATA_CHANNEL_ID_MASK,
+			  "Channel id info", HFILL }
+		},
+		{ &hf_data_timestamp_asic,
+			{ "TimeStamp ASIC", "inz.data.ts_asic",
+			  FT_UINT64, BASE_CUSTOM, display_timestamp_asic, DATA_TIMESTAMP_ASIC_MASK,
+			  "TimeStamp ASIC info", HFILL }
+		},
+		{ &hf_data_timestamp_fpga,
+			{ "TimeStamp coearse (FPGA)", "inz.data.ts_coearse",
+			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_FPGA_MASK,
+			  "TimeStamp coearse (FPGA) info", HFILL }
+		},
+		{ &hf_data_adc,
+			{ "ADC", "inz.data.adc",
+			  FT_UINT64, BASE_DEC, NULL, DATA_ADC_MASK,
+			  "ADC info", HFILL }
+		},
+#endif
 	};
 
 	static gint *ett[] = {
