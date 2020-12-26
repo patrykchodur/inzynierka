@@ -1,152 +1,79 @@
 #include "config.h"
 #include <epan/packet.h>
-
-#define PORT_NO 48350
-#define DISSECTOR_FULL_NAME "PROJEKT Inzynierka"
-#define DISSECTOR_NAME inz
-
-#define PACKET_WIDTH 182
+#include <stdio.h>
+#include <assert.h>
 
 // #define DEBUG
+//
+// BASIC INFO FOR WIRESHARK UI
+#define DISSECTOR_FULL_NAME "GEMROC Data"
+#define DISSECTOR_SHORT_NAME "GEMROC"
+#define DISSECTOR_FILTER_NAME "gemroc"
 
-#include <stdio.h>
+#define HIGHER_PROTOCOL "udp"
+#define PORT_NO 48350
 
-// #define JOIN(x, y) JOIN_AGAIN(x, y)
-// #define JOIN_AGAIN(x, y) x ## y
-// #define PROTO_REG_HANDOFF_FUNC void JOIN(proto_reg_handoff_, DISSECTOR_NAME) (void)
-// #define PROTO_REGISTER_FUNC void JOIN(proto_register_, DISSECTOR_NAME) (void)
+#define MAX_DATA_COUNT 180
+// packet_no (uint64), status (uint64), data_list (MAX_DATA_COUNT * uint64), data_count(uint16)
+#define PACKET_SIZE (8 + 8 + MAX_DATA_COUNT*8 + 2)
 
-static int proto_inz = -1;
+// PROTOCOL HANDLE
+static int proto_gemroc = -1;
 
+// PROTOCOL FIELDS HANDLES
 static int hf_packet_no = -1;
-static int hf_packet_additional_data = -1;
-static int hf_packet_data_section = -1;
+static int hf_packet_status = -1;
+static int hf_packet_data_list = -1;
 static int hf_packet_data_count = -1;
 
-/* ADDITIONAL DATA */
 
-static int hf_additional_data_clk_state = -1;
-static int hf_additional_data_i2c_status = -1;
-static int hf_additional_data_adc_clk_sel = -1;
-static int hf_additional_data_asic_enable_status = -1;
+/* STATUS */
 
-#define ADDITIONAL_DATA_CLK_STATE_MASK               0x1F00000000000000ull
-#define ADDITIONAL_DATA_I2C_STATUS_MASK              0x000F000000000000ull
-#define ADDITIONAL_DATA_ADC_CLK_SEL_MASK             0x0000300000000000ull
-#define ADDITIONAL_DATA_ASIC_ENABLE_STATUS_MASK      0x00000F0000000000ull
+static int hf_status_clk_state = -1;
+static int hf_status_i2c_status = -1;
+static int hf_status_adc_clk_sel = -1;
+static int hf_status_asic_enable_status = -1;
 
-static int * const additional_info_fileds[] = {
-	&hf_additional_data_clk_state,
-	&hf_additional_data_i2c_status,
-	&hf_additional_data_adc_clk_sel,
-	&hf_additional_data_asic_enable_status,
+#define STATUS_CLK_STATE_MASK               0x1F00000000000000ull
+#define STATUS_I2C_STATUS_MASK              0x000F000000000000ull
+#define STATUS_ADC_CLK_SEL_MASK             0x0000300000000000ull
+#define STATUS_ASIC_ENABLE_STATUS_MASK      0x00000F0000000000ull
+
+static int * const status_info_fileds[] = {
+	&hf_status_clk_state,
+	&hf_status_i2c_status,
+	&hf_status_adc_clk_sel,
+	&hf_status_asic_enable_status,
 	NULL
 };
 
 
-/* PACKET DATA */
+/* DATA */
 
-/* Bits format GEMROC
-    00-13 TimeStamp ASIC
-    14-25 ADC
-    26-28 ASIC id
-    29    OverFlow
-    30    PilUp
-    31    Parity
-    32-54 TimeStamp coearse (FPGA)
-    55-61 Channel id
-    62    Plane X/Y
-    63    Parity
-*/
-
-// #define USE_OLD
-#define REVERSE_BIT_ORDER
-
-static int hf_packet_data = -1;
-
-#ifdef USE_OLD
-static int hf_data_timestamp_asic = -1;
 static int hf_data_adc = -1;
-static int hf_data_asic_id = -1;
-static int hf_data_overflow = -1;
-static int hf_data_pilup = -1;
-static int hf_data_parity_1 = -1;
-static int hf_data_timestamp_coearse = -1;
-static int hf_data_channel_id = -1;
-static int hf_data_plane_x_y = -1;
-static int hf_data_parity_2 = -1;
-#else
-static int hf_data_overflow = -1;
-static int hf_data_pile_up = -1;
-static int hf_data_asic_id = -1;
-static int hf_data_channel_id = -1;
-static int hf_data_timestamp_asic = -1;
 static int hf_data_timestamp_fpga = -1;
-static int hf_data_adc = -1;
-#endif
+static int hf_data_timestamp_asic = -1;
+static int hf_data_channel_id = -1;
+static int hf_data_asic_id = -1;
+static int hf_data_pile_up = -1;
+static int hf_data_overflow = -1;
 
-#ifdef USE_OLD
-
-#ifdef REVERSE_BIT_ORDER
-
-#define DATA_TIMESTAMP_ASIC_MASK        0xFFFC000000000000ull
-#define DATA_ADC_MASK                   0x0003FFC000000000ull
-#define DATA_ASIC_ID_MASK               0x0000003800000000ull
-#define DATA_OVERFLOW_MASK              0x0000000400000000ull
-#define DATA_PILUP_MASK                 0x0000000200000000ull
-#define DATA_PARITY_1_MASK              0x0000000100000000ull
-#define DATA_TIMESTAMP_COEARSE_MASK     0x00000000FFFFFE00ull
-#define DATA_CHANNEL_ID_MASK            0x00000000000001FCull
-#define DATA_PLANE_X_Y_MASK             0x0000000000000002ull
-#define DATA_PARITY_2_MASK              0x0000000000000001ull
-
-#else
-
-#define DATA_TIMESTAMP_ASIC_MASK        0x0000000000003FFFull
-#define DATA_ADC_MASK                   0x0000000003FFC000ull
-#define DATA_ASIC_ID_MASK               0x000000001C000000ull
-#define DATA_OVERFLOW_MASK              0x0000000020000000ull
-#define DATA_PILUP_MASK                 0x0000000040000000ull
-#define DATA_PARITY_1_MASK              0x0000000080000000ull
-#define DATA_TIMESTAMP_COEARSE_MASK     0x007FFFFF00000000ull
-#define DATA_CHANNEL_ID_MASK            0x3F80000000000000ull
-#define DATA_PLANE_X_Y_MASK             0x4000000000000000ull
-#define DATA_PARITY_2_MASK              0x8000000000000000ull
-
-#endif // REVERSE_BIT_ORDER
-#else // USE_OLD
-
-#define DATA_OVERFLOW_MASK              0x0000000000000001ull
-#define DATA_PILE_UP_MASK               0x0000000000000002ull
-#define DATA_ASIC_ID_MASK               0x000000000000000Cull
-#define DATA_CHANNEL_ID_MASK            0x00000000000001F0ull
-#define DATA_TIMESTAMP_ASIC_MASK        0x00000000001FFE00ull
-#define DATA_TIMESTAMP_FPGA_MASK        0x000FFFFFFFE00000ull
 #define DATA_ADC_MASK                   0xFFF0000000000000ull
-
-#endif // USE_OLD
+#define DATA_TIMESTAMP_FPGA_MASK        0x000FFFFFFFE00000ull
+#define DATA_TIMESTAMP_ASIC_MASK        0x00000000001FFE00ull
+#define DATA_CHANNEL_ID_MASK            0x00000000000001F0ull
+#define DATA_ASIC_ID_MASK               0x000000000000000Cull
+#define DATA_PILE_UP_MASK               0x0000000000000002ull
+#define DATA_OVERFLOW_MASK              0x0000000000000001ull
 
 static int * const data_fields[] = {
-#ifdef USE_OLD
-	&hf_data_timestamp_asic,
 	&hf_data_adc,
-	&hf_data_asic_id,
-	&hf_data_overflow,
-	&hf_data_pilup,
-	&hf_data_parity_1,
-	&hf_data_timestamp_coearse,
-	&hf_data_channel_id,
-	&hf_data_plane_x_y,
-	&hf_data_parity_2,
-#else
-	&hf_data_overflow,
-	&hf_data_pile_up,
-	&hf_data_asic_id,
-	&hf_data_channel_id,
-	&hf_data_timestamp_asic,
 	&hf_data_timestamp_fpga,
-	&hf_data_adc,
-#endif
+	&hf_data_timestamp_asic,
+	&hf_data_channel_id,
+	&hf_data_asic_id,
+	&hf_data_pile_up,
+	&hf_data_overflow,
 	NULL
 };
 
@@ -158,9 +85,11 @@ void display_asic_id(gchar *str, guint64 val) {
 	snprintf(str, ITEM_LABEL_LENGTH, "%llu", val + 86);
 }
 
-static gint ett_inz = -1;
-static gint ett_inz_data = -1;
-static gint ett_inz_additional_data = -1;
+// TREES HANDLES
+static gint ett_gemroc = -1;
+static gint ett_gemroc_data_list = -1;
+static gint ett_gemroc_data = -1;
+static gint ett_gemroc_status = -1;
 
 #ifdef DEBUG
 	#define debug_print_int(x) fprintf(stderr, "Info - " #x ": %d\n", (int)x)
@@ -178,222 +107,229 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	proto_tree *top_tree;
 	
 	proto_item *data_tree_item;
-	proto_tree *packet_tree;
+	proto_tree *data_tree;
 
 	guint offset = 0;
 	guint64 packet_no;
 	guint64 data_cnt;
 
-	// basic error handling
-	if (tvb_captured_length(tvb) != PACKET_WIDTH * 8 + 2) {
-		debug_print_f("tvb_captured_length(tvb) not equal to %d*8+2=%d (actually %d)\n", PACKET_WIDTH, PACKET_WIDTH * 8 + 2, tvb_captured_length(tvb));
+	// checking if the data is for us
+	if (tvb_captured_length(tvb) != PACKET_SIZE) {
+		debug_print_f(
+				"tvb_captured_length(tvb) not equal to 8+8+%d*8+2=%d (actually %d)\n",
+				MAX_DATA_COUNT,
+				PACKET_SIZE,
+				tvb_captured_length(tvb)
+			);
 		return 0;
 	}
 
-	// getting some needed info
+	// getting the basic info that will be used while unpacking the data
 	packet_no = tvb_get_guint64(tvb, offset, ENC_LITTLE_ENDIAN);
-	data_cnt = (tvb_get_guint16(tvb, PACKET_WIDTH*8, ENC_LITTLE_ENDIAN) & 0xFFFF) >> 3;
+	data_cnt = (tvb_get_guint16(tvb, PACKET_SIZE - 2, ENC_LITTLE_ENDIAN) & 0xFFFF) >> 3;
 	debug_print_int(packet_no);
 	debug_print_int(data_cnt);
 
 
 	// Preparing column info (upper window)
-	col_set_str(pinfo->cinfo, COL_PROTOCOL, "Inż");
+	col_set_str(pinfo->cinfo, COL_PROTOCOL, DISSECTOR_SHORT_NAME);
 	col_clear(pinfo->cinfo, COL_INFO);
-	col_add_str(pinfo->cinfo, COL_INFO, "GEMROC Data");
+	col_add_fstr(pinfo->cinfo, COL_INFO, "no: %llu, size: %llu", packet_no, data_cnt);
 
-	top_tree_item = proto_tree_add_item(tree, proto_inz, tvb, 0, -1, ENC_NA);
-	top_tree = proto_item_add_subtree(top_tree_item, ett_inz);
+	// Registering top tree
+	top_tree_item = proto_tree_add_item(tree, proto_gemroc, tvb, 0, -1, ENC_NA);
+	top_tree = proto_item_add_subtree(top_tree_item, ett_gemroc);
+
+
+	/* CONSUMING THE DATA */
 
 	// packet no
-	proto_tree_add_item(top_tree, hf_packet_no, tvb, offset, 8, ENC_LITTLE_ENDIAN);
+	proto_tree_add_item(
+			top_tree,
+			hf_packet_no,
+			tvb,
+			offset,
+			8,
+			ENC_LITTLE_ENDIAN
+		);
 	offset += 8;
 
-	// additional data
-	proto_tree_add_bitmask(top_tree, tvb, offset, hf_packet_additional_data, ett_inz_additional_data, additional_info_fileds, ENC_LITTLE_ENDIAN);
+	// status
+	proto_tree_add_bitmask(
+			top_tree,
+			tvb,
+			offset,
+			hf_packet_status,
+			ett_gemroc_status,
+			status_info_fileds,
+			ENC_LITTLE_ENDIAN
+		);
 	offset += 8;
 
-	data_tree_item = proto_tree_add_string_format(top_tree, hf_packet_data_section, tvb, offset, 8*180, ENC_NA, "Packet list");
-	packet_tree = proto_item_add_subtree(data_tree_item, ett_inz_data);
-	/* consume data */
+	/* DATA LIST */
+
+	// adding label "Data list"
+	data_tree_item = proto_tree_add_string_format(
+			top_tree,
+			hf_packet_data_list,
+			tvb,
+			offset,
+			8*MAX_DATA_COUNT,
+			ENC_NA,
+			"Data list"
+		);
+	// making it a tree
+	data_tree = proto_item_add_subtree(
+			data_tree_item,
+			ett_gemroc_data_list
+		);
+
 	for (size_t iter = 0; iter < data_cnt; ++iter) {
-		char tab[0x20];
 		guint inner_offset = offset + (guint)iter * 8;
-		sprintf(tab, "Packet data[%d]", (int)iter);
-		// proto_tree_add_bitmask(data_tree_item, tvb, inner_offset, hf_packet_data, ett_inz_data, data_fields, ENC_LITTLE_ENDIAN);
-		proto_tree_add_bitmask_text(data_tree_item, tvb, inner_offset, 8, tab, NULL, ett_inz_data, data_fields, ENC_LITTLE_ENDIAN, BMT_NO_APPEND);
+
+		char diplay_name[0x20];
+		sprintf(diplay_name, "[%d]", (int)iter);
+
+		// data (single entity)
+		proto_tree_add_bitmask_text(
+				data_tree_item,
+				tvb,
+				inner_offset,
+				8,
+				diplay_name,
+				NULL,
+				ett_gemroc_data,
+				data_fields,
+				ENC_LITTLE_ENDIAN,
+				BMT_NO_APPEND
+			);
 	}
-	offset += 180*8;
-	proto_tree_add_item(top_tree, hf_packet_data_count, tvb, offset, 2, ENC_LITTLE_ENDIAN);
+	offset += MAX_DATA_COUNT*8;
+
+	// data count
+	proto_tree_add_item(
+			top_tree,
+			hf_packet_data_count,
+			tvb,
+			offset,
+			2,
+			ENC_LITTLE_ENDIAN
+		);
 	offset += 2;
 
+	// we should have consumed all the data
+	assert(tvb_captured_length(tvb) == offset);
 	return tvb_captured_length(tvb);
 }
 
-void proto_register_inz (void)
+void proto_register_gemroc (void)
 {
 	static hf_register_info hf[] = {
 		/* PACKET INFO */
 		{ &hf_packet_no, 
-			{ "Packet no", "inz.pack_no", 
+			{ "Packet no", DISSECTOR_FILTER_NAME ".pack_no", 
 			  FT_UINT64, BASE_DEC, NULL, 0x0,
 			  "Number of this packet", HFILL }
 		},
-		{ &hf_packet_additional_data,
-			{ "Status data", "inz.add_data",
+		{ &hf_packet_status,
+			{ "Status", DISSECTOR_FILTER_NAME ".add_data",
 			  FT_UINT64, BASE_HEX, NULL, 0x0,
-			  "Status data containing info about asic settings", HFILL }
+			  "Status containing info about asic settings", HFILL }
 		},
-		{ &hf_packet_data_section,
-			{ "Data section", "inz.data_sec",
+		{ &hf_packet_data_list,
+			{ "Data section", DISSECTOR_FILTER_NAME ".data_sec",
 			  FT_STRINGZ, BASE_NONE, NULL, 0x0,
 			  "Data section of packet", HFILL }
 		},
 		{ &hf_packet_data_count,
-			{ "Packet count", "inz.pack_cnt",
+			{ "Packet count", DISSECTOR_FILTER_NAME ".pack_cnt",
 			  FT_UINT16, BASE_DEC, NULL, 0xFFF8 /* 0xFFFF >> 3 */ ,
 			  "Number of data nodes sent in this packet", HFILL }
 		},
 
-		/* ADDITIONAL DATA INFO */
-		{ &hf_additional_data_clk_state,
-			{ "Clk state", "inz.add_data.clk_st",
-			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_CLK_STATE_MASK,
+		/* STATUS INFO */
+		{ &hf_status_clk_state,
+			{ "Clk state", DISSECTOR_FILTER_NAME ".add_data.clk_st",
+			  FT_UINT64, BASE_HEX, NULL, STATUS_CLK_STATE_MASK,
 			  "Clk State info", HFILL }
 		},
-		{ &hf_additional_data_i2c_status,
-			{ "I2C status", "inz.add_data.i2c_status",
-			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_I2C_STATUS_MASK,
+		{ &hf_status_i2c_status,
+			{ "I2C status", DISSECTOR_FILTER_NAME ".add_data.i2c_status",
+			  FT_UINT64, BASE_HEX, NULL, STATUS_I2C_STATUS_MASK,
 			  "I2C status info", HFILL }
 		},
-		{ &hf_additional_data_adc_clk_sel,
-			{ "ADC clk sel", "inz.add_data.adc_clk_sel",
-			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_ADC_CLK_SEL_MASK,
+		{ &hf_status_adc_clk_sel,
+			{ "ADC clk sel", DISSECTOR_FILTER_NAME ".add_data.adc_clk_sel",
+			  FT_UINT64, BASE_HEX, NULL, STATUS_ADC_CLK_SEL_MASK,
 			  "ADC clk sel info", HFILL }
 		},
-		{ &hf_additional_data_asic_enable_status,
-			{ "ASIC enable status", "inz.add_data.asic_enable_status",
-			  FT_UINT64, BASE_HEX, NULL, ADDITIONAL_DATA_ASIC_ENABLE_STATUS_MASK,
+		{ &hf_status_asic_enable_status,
+			{ "ASIC enable status", DISSECTOR_FILTER_NAME ".add_data.asic_enable_status",
+			  FT_UINT64, BASE_HEX, NULL, STATUS_ASIC_ENABLE_STATUS_MASK,
 			  "ASIC enable status info", HFILL }
 		},
 
 		/* DATA INFO */
-		{ &hf_packet_data,
-			{ "Packet data", "inz.pack_data",
-			  FT_UINT64, BASE_DEC, NULL, 0x0,
-			  "Data of packets, now unavailable", HFILL }
-		},
-
-#ifdef USE_OLD
-		{ &hf_data_timestamp_asic,
-			{ "TimeStamp ASIC", "inz.data.ts_asic",
-			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_ASIC_MASK,
-			  "TimeStamp ASIC info", HFILL }
-		},
-		{ &hf_data_adc,
-			{ "ADC", "inz.data.adc",
-			  FT_UINT64, BASE_DEC, NULL, DATA_ADC_MASK,
-			  "ADC info", HFILL }
-		},
-		{ &hf_data_asic_id,
-			{ "ASIC id", "inz.data.asic_id",
-			  FT_UINT64, BASE_DEC, NULL, DATA_ASIC_ID_MASK,
-			  "ASIC id info", HFILL }
-		},
 		{ &hf_data_overflow,
-			{ "OverFlow", "inz.data.overflow",
-			  FT_UINT64, BASE_DEC, NULL, DATA_OVERFLOW_MASK,
-			  "OverFlow info", HFILL }
-		},
-		{ &hf_data_pilup,
-			{ "PilUp", "inz.data.pilup",
-			  FT_UINT64, BASE_DEC, NULL, DATA_PILUP_MASK,
-			  "PilUp info", HFILL }
-		},
-		{ &hf_data_parity_1,
-			{ "Parity", "inz.data.parity_1",
-			  FT_UINT64, BASE_DEC, NULL, DATA_PARITY_1_MASK,
-			  "Parity info", HFILL }
-		},
-		{ &hf_data_timestamp_coearse,
-			{ "TimeStamp coearse (FPGA)", "inz.data.ts_coearse",
-			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_COEARSE_MASK,
-			  "TimeStamp coearse (FPGA) info", HFILL }
-		},
-		{ &hf_data_channel_id,
-			{ "Channel id", "inz.data.channel_id",
-			  FT_UINT64, BASE_DEC, NULL, DATA_CHANNEL_ID_MASK,
-			  "Channel id info", HFILL }
-		},
-		{ &hf_data_plane_x_y,
-			{ "Plane X/Y", "inz.data.plane_x_y",
-			  FT_UINT64, BASE_DEC, NULL, DATA_PLANE_X_Y_MASK,
-			  "Plane X/Y info", HFILL }
-		},
-		{ &hf_data_parity_2,
-			{ "Parity 2", "inz.data.parity_2",
-			  FT_UINT64, BASE_DEC, NULL, DATA_PARITY_2_MASK,
-			  "Parity 2 info", HFILL }
-		},
-#else // USE_OLD
-		{ &hf_data_overflow,
-			{ "OverFlow", "inz.data.overflow",
+			{ "OverFlow", DISSECTOR_FILTER_NAME ".data.overflow",
 			  FT_UINT64, BASE_DEC, NULL, DATA_OVERFLOW_MASK,
 			  "OverFlow info", HFILL }
 		},
 		{ &hf_data_pile_up,
-			{ "PileUp", "inz.data.pile_up",
+			{ "PileUp", DISSECTOR_FILTER_NAME ".data.pile_up",
 			  FT_UINT64, BASE_DEC, NULL, DATA_PILE_UP_MASK,
 			  "PileUp info", HFILL }
 		},
 		{ &hf_data_asic_id,
-			{ "ASIC id", "inz.data.asic_id",
+			{ "ASIC id", DISSECTOR_FILTER_NAME ".data.asic_id",
 			  FT_UINT64, BASE_CUSTOM, display_asic_id, DATA_ASIC_ID_MASK,
 			  "ASIC id info", HFILL }
 		},
 		{ &hf_data_channel_id,
-			{ "Channel id", "inz.data.channel_id",
+			{ "Channel id", DISSECTOR_FILTER_NAME ".data.channel_id",
 			  FT_UINT64, BASE_DEC, NULL, DATA_CHANNEL_ID_MASK,
 			  "Channel id info", HFILL }
 		},
 		{ &hf_data_timestamp_asic,
-			{ "TimeStamp ASIC", "inz.data.ts_asic",
+			{ "TimeStamp ASIC", DISSECTOR_FILTER_NAME ".data.ts_asic",
 			  FT_UINT64, BASE_CUSTOM, display_timestamp_asic, DATA_TIMESTAMP_ASIC_MASK,
 			  "TimeStamp ASIC info", HFILL }
 		},
 		{ &hf_data_timestamp_fpga,
-			{ "TimeStamp coearse (FPGA)", "inz.data.ts_coearse",
+			{ "TimeStamp coearse (FPGA)", DISSECTOR_FILTER_NAME ".data.ts_coearse",
 			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_FPGA_MASK,
 			  "TimeStamp coearse (FPGA) info", HFILL }
 		},
 		{ &hf_data_adc,
-			{ "ADC", "inz.data.adc",
+			{ "ADC", DISSECTOR_FILTER_NAME ".data.adc",
 			  FT_UINT64, BASE_DEC, NULL, DATA_ADC_MASK,
 			  "ADC info", HFILL }
 		},
-#endif
 	};
 
+	// trees handles list
 	static gint *ett[] = {
-		&ett_inz,
-		&ett_inz_data,
-		&ett_inz_additional_data,
+		&ett_gemroc,
+		&ett_gemroc_data_list,
+		&ett_gemroc_data,
+		&ett_gemroc_status,
 	};
 
-	proto_inz = proto_register_protocol (
-			"PROJEKT Inzynierka",    /* name        */
-			"INZ",                   /* short name  */
-			"inz"                    /* filter_name */
-			);
+	// register protocol
+	proto_gemroc = proto_register_protocol (
+			DISSECTOR_FULL_NAME,      /* name        */
+			DISSECTOR_SHORT_NAME,     /* short name  */
+			DISSECTOR_FILTER_NAME     /* filter_name */
+		);
 
-	proto_register_field_array(proto_inz, hf, array_length(hf));
+	proto_register_field_array(proto_gemroc, hf, array_length(hf));
 	proto_register_subtree_array(ett, array_length(ett));
 }
 
-void proto_reg_handoff_inz (void)
+void proto_reg_handoff_gemroc (void)
 {
-	static dissector_handle_t guide_handle;
+	static dissector_handle_t proto_handle;
 
-	guide_handle = create_dissector_handle(/*the dissection function*/ dissect, proto_inz);
-	dissector_add_uint("udp.port", PORT_NO, guide_handle);
+	proto_handle = create_dissector_handle(dissect, proto_gemroc);
+	dissector_add_uint(HIGHER_PROTOCOL ".port", PORT_NO, proto_handle);
 }
