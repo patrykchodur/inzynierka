@@ -1,5 +1,5 @@
 
-set(PLUGIN_NAME projekt_inzynierka)
+set(PLUGIN_NAME gemroc_dissector)
 include(WiresharkPlugin)
 
 set_module_info(${PLUGIN_NAME} 0 0 1 0)
