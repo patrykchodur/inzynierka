@@ -6,11 +6,11 @@
 // #define DEBUG
 //
 // BASIC INFO FOR WIRESHARK UI
-#define DISSECTOR_FULL_NAME "GEMROC Data"
-#define DISSECTOR_SHORT_NAME "GEMROC"
-#define DISSECTOR_FILTER_NAME "gemroc"
+#define DISSECTOR_FULL_NAME "GEMROC Udp Data"
+#define DISSECTOR_SHORT_NAME "GEMROC Udp"
+#define DISSECTOR_FILTER_NAME "gemroc_udp"
 
-#define HIGHER_PROTOCOL "udp"
+#define HIGHER_LEVEL_PROTOCOL "udp"
 #define PORT_NO 48350
 
 #define MAX_DATA_COUNT 180
@@ -18,7 +18,7 @@
 #define PACKET_SIZE (8 + 8 + MAX_DATA_COUNT*8 + 2)
 
 // PROTOCOL HANDLE
-static int proto_gemroc = -1;
+static int proto_gemroc_udp = -1;
 
 // PROTOCOL FIELDS HANDLES
 static int hf_packet_no = -1;
@@ -86,10 +86,10 @@ void display_asic_id(gchar *str, guint64 val) {
 }
 
 // TREES HANDLES
-static gint ett_gemroc = -1;
-static gint ett_gemroc_data_list = -1;
-static gint ett_gemroc_data = -1;
-static gint ett_gemroc_status = -1;
+static gint ett_gemroc_udp = -1;
+static gint ett_gemroc_udp_data_list = -1;
+static gint ett_gemroc_udp_data = -1;
+static gint ett_gemroc_udp_status = -1;
 
 #ifdef DEBUG
 	#define debug_print_int(x) fprintf(stderr, "Info - " #x ": %d\n", (int)x)
@@ -137,8 +137,8 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	col_add_fstr(pinfo->cinfo, COL_INFO, "no: %llu, size: %llu", packet_no, data_cnt);
 
 	// Registering top tree
-	top_tree_item = proto_tree_add_item(tree, proto_gemroc, tvb, 0, -1, ENC_NA);
-	top_tree = proto_item_add_subtree(top_tree_item, ett_gemroc);
+	top_tree_item = proto_tree_add_item(tree, proto_gemroc_udp, tvb, 0, -1, ENC_NA);
+	top_tree = proto_item_add_subtree(top_tree_item, ett_gemroc_udp);
 
 
 	/* CONSUMING THE DATA */
@@ -160,7 +160,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 			tvb,
 			offset,
 			hf_packet_status,
-			ett_gemroc_status,
+			ett_gemroc_udp_status,
 			status_info_fileds,
 			ENC_LITTLE_ENDIAN
 		);
@@ -181,7 +181,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	// making it a tree
 	data_tree = proto_item_add_subtree(
 			data_tree_item,
-			ett_gemroc_data_list
+			ett_gemroc_udp_data_list
 		);
 
 	for (size_t iter = 0; iter < data_cnt; ++iter) {
@@ -198,7 +198,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 				8,
 				diplay_name,
 				NULL,
-				ett_gemroc_data,
+				ett_gemroc_udp_data,
 				data_fields,
 				ENC_LITTLE_ENDIAN,
 				BMT_NO_APPEND
@@ -222,7 +222,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	return tvb_captured_length(tvb);
 }
 
-void proto_register_gemroc (void)
+void proto_register_gemroc_udp (void)
 {
 	static hf_register_info hf[] = {
 		/* PACKET INFO */
@@ -232,39 +232,39 @@ void proto_register_gemroc (void)
 			  "Number of this packet", HFILL }
 		},
 		{ &hf_packet_status,
-			{ "Status", DISSECTOR_FILTER_NAME ".add_data",
+			{ "Status", DISSECTOR_FILTER_NAME ".status",
 			  FT_UINT64, BASE_HEX, NULL, 0x0,
 			  "Status containing info about asic settings", HFILL }
 		},
 		{ &hf_packet_data_list,
-			{ "Data section", DISSECTOR_FILTER_NAME ".data_sec",
+			{ "Data section", DISSECTOR_FILTER_NAME ".data_list",
 			  FT_STRINGZ, BASE_NONE, NULL, 0x0,
 			  "Data section of packet", HFILL }
 		},
 		{ &hf_packet_data_count,
-			{ "Packet count", DISSECTOR_FILTER_NAME ".pack_cnt",
+			{ "Data count", DISSECTOR_FILTER_NAME ".data_cnt",
 			  FT_UINT16, BASE_DEC, NULL, 0xFFF8 /* 0xFFFF >> 3 */ ,
 			  "Number of data nodes sent in this packet", HFILL }
 		},
 
 		/* STATUS INFO */
 		{ &hf_status_clk_state,
-			{ "Clk state", DISSECTOR_FILTER_NAME ".add_data.clk_st",
+			{ "Clk state", DISSECTOR_FILTER_NAME ".status.clk_st",
 			  FT_UINT64, BASE_HEX, NULL, STATUS_CLK_STATE_MASK,
 			  "Clk State info", HFILL }
 		},
 		{ &hf_status_i2c_status,
-			{ "I2C status", DISSECTOR_FILTER_NAME ".add_data.i2c_status",
+			{ "I2C status", DISSECTOR_FILTER_NAME ".status.i2c_status",
 			  FT_UINT64, BASE_HEX, NULL, STATUS_I2C_STATUS_MASK,
 			  "I2C status info", HFILL }
 		},
 		{ &hf_status_adc_clk_sel,
-			{ "ADC clk sel", DISSECTOR_FILTER_NAME ".add_data.adc_clk_sel",
+			{ "ADC clk sel", DISSECTOR_FILTER_NAME ".status.adc_clk_sel",
 			  FT_UINT64, BASE_HEX, NULL, STATUS_ADC_CLK_SEL_MASK,
 			  "ADC clk sel info", HFILL }
 		},
 		{ &hf_status_asic_enable_status,
-			{ "ASIC enable status", DISSECTOR_FILTER_NAME ".add_data.asic_enable_status",
+			{ "ASIC enable status", DISSECTOR_FILTER_NAME ".status.asic_enable_status",
 			  FT_UINT64, BASE_HEX, NULL, STATUS_ASIC_ENABLE_STATUS_MASK,
 			  "ASIC enable status info", HFILL }
 		},
@@ -296,9 +296,9 @@ void proto_register_gemroc (void)
 			  "TimeStamp ASIC info", HFILL }
 		},
 		{ &hf_data_timestamp_fpga,
-			{ "TimeStamp coearse (FPGA)", DISSECTOR_FILTER_NAME ".data.ts_coearse",
+			{ "TimeStamp FPGA", DISSECTOR_FILTER_NAME ".data.ts_fpga",
 			  FT_UINT64, BASE_DEC, NULL, DATA_TIMESTAMP_FPGA_MASK,
-			  "TimeStamp coearse (FPGA) info", HFILL }
+			  "TimeStamp FPGA info", HFILL }
 		},
 		{ &hf_data_adc,
 			{ "ADC", DISSECTOR_FILTER_NAME ".data.adc",
@@ -309,27 +309,27 @@ void proto_register_gemroc (void)
 
 	// trees handles list
 	static gint *ett[] = {
-		&ett_gemroc,
-		&ett_gemroc_data_list,
-		&ett_gemroc_data,
-		&ett_gemroc_status,
+		&ett_gemroc_udp,
+		&ett_gemroc_udp_data_list,
+		&ett_gemroc_udp_data,
+		&ett_gemroc_udp_status,
 	};
 
 	// register protocol
-	proto_gemroc = proto_register_protocol (
+	proto_gemroc_udp = proto_register_protocol (
 			DISSECTOR_FULL_NAME,      /* name        */
 			DISSECTOR_SHORT_NAME,     /* short name  */
 			DISSECTOR_FILTER_NAME     /* filter_name */
 		);
 
-	proto_register_field_array(proto_gemroc, hf, array_length(hf));
+	proto_register_field_array(proto_gemroc_udp, hf, array_length(hf));
 	proto_register_subtree_array(ett, array_length(ett));
 }
 
-void proto_reg_handoff_gemroc (void)
+void proto_reg_handoff_gemroc_udp (void)
 {
 	static dissector_handle_t proto_handle;
 
-	proto_handle = create_dissector_handle(dissect, proto_gemroc);
-	dissector_add_uint(HIGHER_PROTOCOL ".port", PORT_NO, proto_handle);
+	proto_handle = create_dissector_handle(dissect, proto_gemroc_udp);
+	dissector_add_uint(HIGHER_LEVEL_PROTOCOL ".port", PORT_NO, proto_handle);
 }
