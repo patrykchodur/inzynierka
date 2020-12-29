@@ -39,7 +39,7 @@ static int hf_status_asic_enable_status = -1;
 #define STATUS_ADC_CLK_SEL_MASK             0x0000300000000000ull
 #define STATUS_ASIC_ENABLE_STATUS_MASK      0x00000F0000000000ull
 
-static int * const status_info_fileds[] = {
+static int * status_info_fileds[] = {
 	&hf_status_clk_state,
 	&hf_status_i2c_status,
 	&hf_status_adc_clk_sel,
@@ -79,10 +79,10 @@ static int * const data_fields[] = {
 
 // CUSTOM DISPLAY FUNCTIONS (for bitfields)
 void display_timestamp_asic(gchar *str, guint64 val) {
-	snprintf(str, ITEM_LABEL_LENGTH, "%llu", val << 2);
+	snprintf(str, ITEM_LABEL_LENGTH, "%" G_GUINT64_FORMAT "", val << 2);
 }
 void display_asic_id(gchar *str, guint64 val) {
-	snprintf(str, ITEM_LABEL_LENGTH, "%llu", val + 86);
+	snprintf(str, ITEM_LABEL_LENGTH, "%" G_GUINT64_FORMAT "", val + 86);
 }
 
 // TREES HANDLES
@@ -107,7 +107,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	proto_tree *top_tree;
 	
 	proto_item *data_tree_item;
-	proto_tree *data_tree;
+	proto_tree *data_tree _U_;
 
 	guint offset = 0;
 	guint64 packet_no;
@@ -134,7 +134,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 	// Preparing column info (upper window)
 	col_set_str(pinfo->cinfo, COL_PROTOCOL, DISSECTOR_SHORT_NAME);
 	col_clear(pinfo->cinfo, COL_INFO);
-	col_add_fstr(pinfo->cinfo, COL_INFO, "no: %llu, size: %llu", packet_no, data_cnt);
+	col_add_fstr(pinfo->cinfo, COL_INFO, "no: %" G_GUINT64_FORMAT ", size: %" G_GUINT64_FORMAT "", packet_no, data_cnt);
 
 	// Registering top tree
 	top_tree_item = proto_tree_add_item(tree, proto_gemroc_udp, tvb, 0, -1, ENC_NA);
