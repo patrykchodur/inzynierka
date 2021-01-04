@@ -39,7 +39,7 @@ static int hf_status_asic_enable_status = -1;
 #define STATUS_ADC_CLK_SEL_MASK             0x0000300000000000ull
 #define STATUS_ASIC_ENABLE_STATUS_MASK      0x00000F0000000000ull
 
-static int * status_info_fileds[] = {
+static int * status_fields[] = {
 	&hf_status_clk_state,
 	&hf_status_i2c_status,
 	&hf_status_adc_clk_sel,
@@ -101,13 +101,13 @@ static gint ett_gemroc_udp_status = -1;
 	#define debug_print_f(...) (void)0
 #endif // DEBUG
 
-static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_)
+static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
 	proto_item *top_tree_item;
 	proto_tree *top_tree;
 	
 	proto_item *data_tree_item;
-	proto_tree *data_tree _U_;
+	proto_tree *data_tree;
 
 	guint offset = 0;
 	guint64 packet_no;
@@ -161,7 +161,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 			offset,
 			hf_packet_status,
 			ett_gemroc_udp_status,
-			status_info_fileds,
+			status_fields,
 			ENC_LITTLE_ENDIAN
 		);
 	offset += 8;
@@ -192,7 +192,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void
 
 		// data (single entity)
 		proto_tree_add_bitmask_text(
-				data_tree_item,
+				data_tree,
 				tvb,
 				inner_offset,
 				8,
@@ -244,7 +244,7 @@ void proto_register_gemroc_udp (void)
 		{ &hf_packet_data_count,
 			{ "Data count", DISSECTOR_FILTER_NAME ".data_cnt",
 			  FT_UINT16, BASE_DEC, NULL, 0xFFF8 /* 0xFFFF >> 3 */ ,
-			  "Number of data nodes sent in this packet", HFILL }
+			  "Number of data sent in this packet", HFILL }
 		},
 
 		/* STATUS INFO */
@@ -282,7 +282,7 @@ void proto_register_gemroc_udp (void)
 		},
 		{ &hf_data_asic_id,
 			{ "ASIC id", DISSECTOR_FILTER_NAME ".data.asic_id",
-			  FT_UINT64, BASE_CUSTOM, display_asic_id, DATA_ASIC_ID_MASK,
+			  FT_UINT64, BASE_CUSTOM, CF_FUNC(&display_asic_id), DATA_ASIC_ID_MASK,
 			  "ASIC id info", HFILL }
 		},
 		{ &hf_data_channel_id,
@@ -292,7 +292,7 @@ void proto_register_gemroc_udp (void)
 		},
 		{ &hf_data_timestamp_asic,
 			{ "TimeStamp ASIC", DISSECTOR_FILTER_NAME ".data.ts_asic",
-			  FT_UINT64, BASE_CUSTOM, display_timestamp_asic, DATA_TIMESTAMP_ASIC_MASK,
+			  FT_UINT64, BASE_CUSTOM, CF_FUNC(&display_timestamp_asic), DATA_TIMESTAMP_ASIC_MASK,
 			  "TimeStamp ASIC info", HFILL }
 		},
 		{ &hf_data_timestamp_fpga,
