@@ -18,8 +18,10 @@ This can be accomplished using `git checkout tags/wireshark-1.2.3`, with `1.2.3`
 Another option is building the whole Wireshark project. In such case the dissector will be built as well.
 
 ##Installation
+
 The result of `gemroc_dissector` target compilation, ie. `gemroc_dissector.so` file, can be copied to `plugins/epan` directory of installed Wireshark.
 If the whole project was built the plugin will be already installed.
 
 ##License
+
 This software is licensed under the GPL v2 License.
