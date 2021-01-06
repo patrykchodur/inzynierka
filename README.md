@@ -1,9 +1,9 @@
-#Project GEMROC
+# Project GEMROC
 
 This project is a Wireshark dissector for packets from GEMROC device. The dissector is
 implemented as a plugin.
 
-##Compilation
+## Compilation
 
 To compile the project link the main directory to the `plugins/epan/` directory in the Wireshark
 source tree and add it's path to `CMakeListsCustom.txt` file in root directory of the Wireshark
@@ -17,11 +17,11 @@ This can be accomplished using `git checkout tags/wireshark-1.2.3`, with `1.2.3`
 
 Another option is building the whole Wireshark project. In such case the dissector will be built as well.
 
-##Installation
+## Installation
 
 The result of `gemroc_dissector` target compilation, ie. `gemroc_dissector.so` file, can be copied to `plugins/epan` directory of installed Wireshark.
 If the whole project was built the plugin will be already installed.
 
-##License
+## License
 
 This software is licensed under the GPL v2 License.
