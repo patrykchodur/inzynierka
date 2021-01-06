@@ -34,10 +34,10 @@ static int hf_status_i2c_status = -1;
 static int hf_status_adc_clk_sel = -1;
 static int hf_status_asic_enable_status = -1;
 
-#define STATUS_CLK_STATE_MASK               0x1F00000000000000ull
-#define STATUS_I2C_STATUS_MASK              0x000F000000000000ull
-#define STATUS_ADC_CLK_SEL_MASK             0x0000300000000000ull
-#define STATUS_ASIC_ENABLE_STATUS_MASK      0x00000F0000000000ull
+#define STATUS_CLK_STATE_MASK               0x1F0000ull
+#define STATUS_I2C_STATUS_MASK              0x000F00ull
+#define STATUS_ADC_CLK_SEL_MASK             0x000030ull
+#define STATUS_ASIC_ENABLE_STATUS_MASK      0x00000Full
 
 static int * status_fields[] = {
 	&hf_status_clk_state,
@@ -177,7 +177,7 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 	proto_tree_add_bitmask(
 			top_tree,
 			tvb,
-			offset,
+			offset + 5,
 			hf_packet_status,
 			ett_gemroc_udp_status,
 			status_fields,
@@ -252,7 +252,7 @@ void proto_register_gemroc_udp (void)
 		},
 		{ &hf_packet_status,
 			{ "Status", DISSECTOR_FILTER_NAME ".status",
-			  FT_UINT64, BASE_HEX, NULL, 0x0,
+			  FT_UINT24, BASE_HEX, NULL, 0x0,
 			  "Status containing info about asic settings", HFILL }
 		},
 		{ &hf_packet_data_list,
@@ -269,22 +269,22 @@ void proto_register_gemroc_udp (void)
 		/* STATUS INFO */
 		{ &hf_status_clk_state,
 			{ "Clk state", DISSECTOR_FILTER_NAME ".status.clk_st",
-			  FT_UINT64, BASE_HEX, NULL, STATUS_CLK_STATE_MASK,
+			  FT_UINT24, BASE_HEX, NULL, STATUS_CLK_STATE_MASK,
 			  "Clk State info", HFILL }
 		},
 		{ &hf_status_i2c_status,
 			{ "I2C status", DISSECTOR_FILTER_NAME ".status.i2c_status",
-			  FT_UINT64, BASE_HEX, NULL, STATUS_I2C_STATUS_MASK,
+			  FT_UINT24, BASE_HEX, NULL, STATUS_I2C_STATUS_MASK,
 			  "I2C status info", HFILL }
 		},
 		{ &hf_status_adc_clk_sel,
 			{ "ADC clk sel", DISSECTOR_FILTER_NAME ".status.adc_clk_sel",
-			  FT_UINT64, BASE_HEX, NULL, STATUS_ADC_CLK_SEL_MASK,
+			  FT_UINT24, BASE_HEX, NULL, STATUS_ADC_CLK_SEL_MASK,
 			  "ADC clk sel info", HFILL }
 		},
 		{ &hf_status_asic_enable_status,
 			{ "ASIC enable status", DISSECTOR_FILTER_NAME ".status.asic_enable_status",
-			  FT_UINT64, BASE_HEX, NULL, STATUS_ASIC_ENABLE_STATUS_MASK,
+			  FT_UINT24, BASE_HEX, NULL, STATUS_ASIC_ENABLE_STATUS_MASK,
 			  "ASIC enable status info", HFILL }
 		},
 
