@@ -84,6 +84,33 @@ void display_timestamp_asic(gchar *str, guint64 val) {
 void display_asic_id(gchar *str, guint64 val) {
 	snprintf(str, ITEM_LABEL_LENGTH, "%" G_GUINT64_FORMAT "", val);
 }
+int snprintb(char* str, size_t max_size_h, guint64 val) {
+	// number of bits to print
+	int max_size = max_size_h > (size_t)INT_MAX ? INT_MAX : (int)max_size_h;
+
+	int bits_to_print = 64;
+	for (; bits_to_print > 1; --bits_to_print)
+		if (val & (guint64)1 << (bits_to_print - 1))
+			break;
+
+	int print_iter = 0;
+	// print bits from most to least important
+	for (; print_iter < bits_to_print && print_iter < max_size - 1; ++print_iter)
+		str[print_iter] = val & (guint64)1 << (bits_to_print - print_iter - 1) ? '1' : '0';
+
+	// add 'b' if have room left
+	if (print_iter < max_size - 1)
+		str[print_iter++] = 'b';
+
+	str[print_iter++] = '\0';
+
+	return bits_to_print + 1;
+}
+
+void display_clk_state(gchar* str, guint32 val) {
+	assert(5 /*bits*/ + 1 /*'b' sign*/ + 1/*null terminator*/ <= ITEM_LABEL_LENGTH);
+	snprintb(str, ITEM_LABEL_LENGTH, val);
+}
 
 // TREES HANDLES
 static gint ett_gemroc_udp = -1;
@@ -174,14 +201,15 @@ static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 	offset += 8;
 
 	// status
-	proto_tree_add_bitmask(
+	proto_tree_add_bitmask_with_flags(
 			top_tree,
 			tvb,
 			offset + 5,
 			hf_packet_status,
 			ett_gemroc_udp_status,
 			status_fields,
-			ENC_LITTLE_ENDIAN
+			ENC_LITTLE_ENDIAN,
+			BMT_NO_APPEND
 		);
 	offset += 8;
 
@@ -269,7 +297,7 @@ void proto_register_gemroc_udp (void)
 		/* STATUS INFO */
 		{ &hf_status_clk_state,
 			{ "Clk state", DISSECTOR_FILTER_NAME ".status.clk_st",
-			  FT_UINT24, BASE_HEX, NULL, STATUS_CLK_STATE_MASK,
+			  FT_UINT24, BASE_CUSTOM, CF_FUNC(&display_clk_state), STATUS_CLK_STATE_MASK,
 			  "Clk State info", HFILL }
 		},
 		{ &hf_status_i2c_status,
