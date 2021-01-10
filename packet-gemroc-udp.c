@@ -147,7 +147,7 @@ static gint ett_gemroc_udp_status = -1;
 	#define debug_print_f(...) (void)0
 #endif // DEBUG
 
-static int dissect(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
+static int dissect_gemroc_udp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
 	proto_item *top_tree_item;
 	proto_tree *top_tree;
@@ -380,6 +380,6 @@ void proto_reg_handoff_gemroc_udp (void)
 {
 	static dissector_handle_t proto_handle;
 
-	proto_handle = create_dissector_handle(dissect, proto_gemroc_udp);
+	proto_handle = create_dissector_handle(dissect_gemroc_udp, proto_gemroc_udp);
 	dissector_add_uint(HIGHER_LEVEL_PROTOCOL ".port", PORT_NO, proto_handle);
 }

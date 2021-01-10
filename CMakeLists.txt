@@ -5,7 +5,7 @@ include(WiresharkPlugin)
 set_module_info(${PLUGIN_NAME} 0 0 1 0)
 
 set(DISSECTOR_SRC
-	main.c
+	packet-gemroc-udp.c
 )
 
 set(PLUGIN_FILES
